@@ -101,8 +101,57 @@ parse-wire-path: func [
     locations
 ]
 
-is-crossing: func [
-
+get-intersection: func [
+    "Find where two lines cross"
+    point1 [series!] "first point of first line"
+    point2 [series!] "second point of first line"
+    point3 [series!] "first point of second line"
+    point4 [series!] "second point of second line"
 ] [
-    
+    ; line 1 and line 2 must be orthogonal
+    if all [
+        (point1/1 = point2/1) 
+        (point3/2 = point4/2) 
+        (point1/1 < max point3/1 point4/1) 
+        (point1/1 > min point3/1 point4/1)
+        (point3/2 < max point1/2 point2/2)
+        (point3/2 > min point1/2 point2/2)
+    ] [
+        compose [(pick point1 1) (pick point3 2)]
+    ]
+    if all [
+        (point1/2 = point2/2) 
+        (point3/1 = point4/1)
+        (point1/2 < max point3/2 point4/2) 
+        (point1/2 > min point3/2 point4/2)
+        (point3/1 < max point1/1 point2/1)
+        (point3/1 > min point1/1 point2/1)
+    ] [
+        compose [(pick point3 1) (pick point1 2)]
+    ]
 ]
+
+
+
+; -------------------------
+
+; test: funct ['fn input expected /local output] [
+;     output: (do reduce insert input fn)
+;     if not (output = expected) [
+;         print rejoin [
+;             "Error: " :fn " " :input newline
+;             " - expected: " expected newline
+;             " - output: " output
+;         ]
+;     ]
+; ]
+
+; test parse-wire-path [] [[0 0]]
+; test parse-wire-path ["U1"] [[0 0] [0 1]]
+; test parse-wire-path ["D1"] [[0 0] [0 -1]]
+; test parse-wire-path ["R1"] [[0 0] [1 0]]
+; test parse-wire-path ["L1"] [[0 0] [-1 0]]
+; test parse-wire-path ["L1" "R2" "U3" "D4"] [[0 0] [-1 0] [1 0] [1 3] [1 -1]]
+
+; test get-intersection [[-1 0] [1 0] [0 -1] [0 1]] [[0 0]]
+; test get-intersectino [[-1 0] [5 0] [2 -1] [2 5]] [[2 0]]
