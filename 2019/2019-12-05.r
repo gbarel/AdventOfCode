@@ -177,13 +177,14 @@ step-code: func [
   pos: get pos_out
   op: to-string get-code memory pos "immediate"
   while [(length? op) < 5] [insert head op "0"]
-  inst: to-integer (at op 4)
+  inst: to-integer (at op 4) 
+  prin rejoin compose ["step %" pos " : " op " >> "]
   switch inst [
     1 [
       w1: get-code memory (pos + 1) op/3
       w2: get-code memory (pos + 2) op/2
       w3: get-code memory (pos + 3) "immediate"
-      ; probe rejoin compose ["set %" (w3) " = " (w1) " + " (w2)]
+      print rejoin compose ["ADD %" (w3) ": (" (w1) " + " (w2) ")"]
       set-code memory w3 (w1 + w2)
       set pos_out (pos + 4)
     ]
@@ -191,26 +192,58 @@ step-code: func [
       w1: get-code memory (pos + 1) op/3
       w2: get-code memory (pos + 2) op/2
       w3: get-code memory (pos + 3) "immediate"
-      ; probe rejoin compose ["set %" (w3) " = " (w1) " * " (w2)]
+      print rejoin compose ["MUL %" (w3) ": (" (w1) " * " (w2) ")"]
       set-code memory w3 (w1 * w2) 
       set pos_out (pos + 4)
     ]
     3 [ 
       w1: get-code memory (pos + 1) "immediate"
       val: to-integer ask "input =? "
-      ; probe rejoin compose ["set %" (w1) " = " (val)]
+      print rejoin compose ["IN  %" (w1) ": " (val)]
       set-code memory w1 val
       set pos_out (pos + 2)
     ]
     4 [ 
       w1: get-code memory (pos + 1) op/3
       val: get-code memory (pos + 1) "position"
-      print rejoin compose ["output = " val] 
+      print rejoin compose ["OUT " val] 
       set pos_out (pos + 2)
+    ]
+    5 [
+      w1: get-code memory (pos + 1) op/3
+      w2: get-code memory (pos + 2) op/2
+      val: either (not (w1 = 0)) [w2] [pos + 3]
+      print rejoin compose ["JNE " w1 " /= 0 ( " val " )"] 
+      set pos_out val
+    ]
+    6 [
+      w1: get-code memory (pos + 1) op/3
+      w2: get-code memory (pos + 2) op/2
+      val: either (w1 = 0) [w2] [pos + 3]
+      print rejoin compose ["JE  " w1 " = 0 ( " val " )"]
+      set pos_out val    
+    ]
+    7 [
+      w1: get-code memory (pos + 1) op/3
+      w2: get-code memory (pos + 2) op/2
+      w3: get-code memory (pos + 3) "immediate"
+      val: either (w1 < w2) [1] [0]
+      print rejoin compose ["LT  " w1 " < " w2 " ( %" w3 ": " val " )"]
+      set-code memory w3 val
+      set pos_out (pos + 4)
+    ]
+    8 [
+      w1: get-code memory (pos + 1) op/3
+      w2: get-code memory (pos + 2) op/2
+      w3: get-code memory (pos + 3) "immediate"
+      val: either (w1 = w2) [1] [0]
+      print rejoin compose ["EQ  " w1 " = " w2 " ( %" w3 ": " val " )"]
+      set-code memory w3 val
+      set pos_out (pos + 4)
     ]
     99 [ 
       set pos_out -1
-      ; print "abort"
+      print "BRK"
     ] ; abort
   ]
   return
@@ -228,15 +261,15 @@ step-code memory pos
 test [memory] [1101 100 -1 4 99]
 test [pos] 4
 
-
-memory: map-each entry parse read %2019-12-05-input.txt "," [to-integer entry]
-pos: 0
-while [pos >= 0] [
-  ; trace on
-  step-code memory pos
-  ; print rejoin compose [" sp=" (pos)]
+run-code: func [input] [
+  memory: map-each entry parse input "," [to-integer entry]
+  pos: 0
+  while [pos >= 0] [
+    step-code memory pos
+  ]
 ]
 
+run-code read %2019-12-05-input.txt
 
 comment {
   --- Part Two ---
@@ -309,3 +342,6 @@ comment {
 
   What is the diagnostic code for system ID 5?
 }
+
+; print rejoin [ newline "Part 2: " ]
+; run-code "3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"
