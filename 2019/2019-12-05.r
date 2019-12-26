@@ -1,7 +1,7 @@
 REBOL [
   Title: "Advent of Code 2019 - Day 05"
   Author: "Gaetan Barel"
-  Version: 1.0.0
+  Version: 1.0.1
   Date: 05-December-2019
 ]
 
@@ -134,7 +134,7 @@ get-code: func [
     mode [char! string!] "0: position ; 1: immediate"
     /local index
 ][
-  ; TODO access mode
+  ; TODO access modee
   index: switch mode [
     "position"  [ (memory/(pos + 1)) + 1 ]
     #"0"           [ (memory/(pos + 1)) + 1 ]
@@ -151,12 +151,12 @@ get-code: func [
   memory/(index)
 ]
 
-test [get-code [1 2 3 4 5] 0 #"1"] 1
-test [get-code [1 2 3 4 5] 0 "immediate"] 1
-test [get-code [1 2 3 4 5] 0 #"0"] 2
-test [get-code [1 2 3 4 5] 0 "position"] 2
-test [get-code [5 4 3 2 1] 1 #"1"] 4
-test [get-code [5 4 3 2 1] 1 #"0"] 1
+; test [get-code [1 2 3 4 5] 0 #"1"] 1
+; test [get-code [1 2 3 4 5] 0 "immediate"] 1
+; test [get-code [1 2 3 4 5] 0 #"0"] 2
+; test [get-code [1 2 3 4 5] 0 "position"] 2
+; test [get-code [5 4 3 2 1] 1 #"1"] 4
+; test [get-code [5 4 3 2 1] 1 #"0"] 1
 
 set-code: func [
   program [series!] "program to be modified"
@@ -166,7 +166,7 @@ set-code: func [
   head change/part (at program (pos + 1)) val 1
 ]
 
-test [set-code [1 2 3] 0 3] [3 2 3]
+; test [set-code [1 2 3] 0 3] [3 2 3]
 
 step-code: func [
     {Process the intcode at the given position}
@@ -249,27 +249,72 @@ step-code: func [
   return
 ]
 
-memory: [1002 4 3 4 33]
-pos: 0
-step-code memory pos
-test [memory] [1002 4 3 4 99]
-test [pos] 4
+; memory: [1002 4 3 4 33]
+; pos: 0
+; step-code memory pos
+; test [memory] [1002 4 3 4 99]
+; test [pos] 4
 
-memory: [1101 100 -1 4 0]
-pos: 0
-step-code memory pos
-test [memory] [1101 100 -1 4 99]
-test [pos] 4
+; memory: [1101 100 -1 4 0]
+; pos: 0
+; step-code memory pos
+; test [memory] [1101 100 -1 4 99]
+; test [pos] 4
 
 run-code: func [input] [
-  memory: map-each entry parse input "," [to-integer entry]
+  memory: copy input ;map-each entry parse input "," [to-integer entry]
   pos: 0
   while [pos >= 0] [
     step-code memory pos
   ]
 ]
 
-run-code read %2019-12-05-input.txt
+__is_debug: false
+__debug: func [block [block!]] [
+  if __is_debug [print rejoin compose/only block]
+]
+debug: func [b [logic!]] [__is_debug: b return]
+run-code2: func [data [block!] /local memory ip opcode inst modes params p1 p2 p3] [
+  memory: ip: copy data
+  ; opcode=(modes*100+inst) params=[p1 p2 p3]
+  while [not tail? ip] [
+    opcode: first+ ip  params: copy/part set [p1 p2 p3] ip 3
+    inst: opcode // 100  modes: round/floor opcode / 100 
+    forall params [
+      if 0 = (modes // 10) [ params/1: memory/((params/1) + 1)]
+      modes: round/floor modes / 10
+    ]
+    __debug ["%" (subtract ((length? head ip) - (length? ip)) 1) " [" opcode " " p1 " " p2 " " p3 "]"]
+    ip: switch/default inst [
+      1 [ __debug ["ADD %" p3 ": " params/1 " + " params/2]
+          memory/(p3 + 1): (params/1 + params/2)
+          skip ip 3 ]
+      2 [ __debug ["MUL %" p3 ": " params/1 " * " params/2]
+          memory/(p3 + 1): (params/1 * params/2)
+          skip ip 3 ]
+      3 [ __debug ["IN  %" p3]
+          memory/(p1 + 1): to-integer ask "input =? "
+          skip ip 1 ]
+      4 [ print rejoin compose ["OUT = " memory/(p1 + 1)]
+          skip ip 1 ]
+      5 [ __debug ["JNE " params/1 " /=? 0 -> " params/2 ]
+          either not (0 = params/1) [skip head ip params/2] [skip ip 2] ]
+      6 [ __debug ["JEQ " params/1 " =? 0 ->" params/2 ]
+          either (0 = params/1) [skip head ip params/2] [skip ip 2] ]
+      7 [ __debug ["LT  %" p3 ": " params/1 " = " params/2]
+          memory/(p3 + 1): either ((params/1) < (params/2)) [1] [0]  
+          skip ip 3 ]
+      8 [ __debug ["EQ  %" p3 ": " params/1 " = " params/2]
+          memory/(p3 + 1): either ((params/1) = (params/2)) [1] [0]
+          skip ip 3 ]
+      99 [ ip: tail ip ]
+    ] [ __debug ["ERROR unknown instruction " inst]  ip: tail ip ]
+  ]
+]
+
+data: map-each entry (parse read %2019-12-05-input.txt ",") [to-integer entry]
+
+; run-code2 data
 
 comment {
   --- Part Two ---
@@ -345,3 +390,16 @@ comment {
 
 ; print rejoin [ newline "Part 2: " ]
 ; run-code "3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"
+
+; TODO
+; #1 retrieve all values using set
+; #2 merge run-code & step-code
+; #3 switch pos (index) for ip (array at a given position)
+; opcode: first+ ip memops: copy/part ip 3 
+; mode: round opcode / 100 opcode: opcode // 100
+; forall memops [
+;   if 0 == (mode // 10) [
+;     memops/1: memory/(memops/1 + 1)
+;   ] mode: round mode / 10
+; ]
+; switch opcode [ blablabla ]
