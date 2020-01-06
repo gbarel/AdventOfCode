@@ -107,94 +107,138 @@ run-code: func [
   /local memory ip inst p1 p2 p3 r1 r2 r3 output write read
 ][
   output: copy []
-  memory: head ip: copy data
+  memory: copy head data
+  ip: at memory (index? data)
   brk: false
   ; local helper functions
   write: func [idx val][memory/(idx + 1): val]
   read: func [idx][memory/(idx + 1)]
 
+  ;debug ["run-code " newline 
+  ;  " - input [" input "]" newline 
+  ;  " - ip index? " index? ip " / " length? memory]
   while [and not brk not tail? ip] [
-    ; set inst
+    ; inst = instruction
     ; [p1 p2 p3] = original parameters
     ; [r1 r2 r3] = modified parameters
     use [params modes opcode] [
-      opcode: first+ ip
+      opcode: first+ ip  params: copy/part set [p1 p2 p3] ip 3
       inst: opcode // 100  modes: round/floor opcode / 100 
-      params: copy/part set [p1 p2 p3] ip 3
       forall params [
         if 0 = (modes // 10) [params/1: read params/1]
         modes: round/floor modes / 10
       ]
       set [r1 r2 r3] params
+      ;debug ["%" index? ip " [" opcode " " p1 " " p2 " " p3 "]"]
     ]
-    ; debug ["%" index? ip " [" opcode " " p1 " " p2 " " p3 "]"]
+
     ip: switch/default inst [
-      1 [ ; debug ["ADD %" p3 ": " r1 " + " r2]
+      1 [ ;debug ["ADD %" p3 ": " r1 " + " r2]
           write p3 (r1 + r2)
           skip ip 3 ]
-      2 [ ; debug ["MUL %" p3 ": " r1 " * " r2]
+      2 [ ;debug ["MUL %" p3 ": " r1 " * " r2]
           write p3 (r1 * r2)
           skip ip 3 ]
-      3 [ ; debug ["IN  %" p1 ": " first input]
-          write p1 (first back input: next input)
+      3 [ ;debug ["IN  %" p1 ": " first input]
+          write p1 (first+ input)
           skip ip 1 ]
-      4 [ ; debug ["OUT %" memory/(p1 + 1)]
+      4 [ ;debug ["OUT %" memory/(p1 + 1)]
           append output memory/(p1 + 1)
+          if (exit-on-output) [
+            brk: true
+            ;debug ["EXIT"]
+          ]
           skip ip 1 ]
-      5 [ ; debug ["JNE " r1 " /=? 0 -> " r2 ]
+      5 [ ;debug ["JNE " r1 " /=? 0 -> " r2 ]
           either not (0 = r1) [skip head ip r2] [skip ip 2] ]
-      6 [ ; debug ["JEQ " r1 " =? 0 ->" r2 ]
+      6 [ ;debug ["JEQ " r1 " =? 0 ->" r2 ]
           either (0 = r1) [skip head ip r2] [skip ip 2] ]
-      7 [ ; debug ["LT  %" p3 ": " r1 " = " r2]
+      7 [ ;debug ["LT  %" p3 ": " r1 " = " r2]
           write p3 either (r1 < r2) [1] [0]  
           skip ip 3 ]
-      8 [ ; debug ["EQ  %" p3 ": " r1 " = " r2]
+      8 [ ;debug ["EQ  %" p3 ": " r1 " = " r2]
           write p3 either (r1 = r2) [1] [0]
           skip ip 3 ]
-      99 [ ; debug ["END"]
+      99 [ ;debug ["END "]
            tail ip ]
-    ][ debug ["ERROR unknown instruction " inst]  ip: tail ip ]
+    ][ 
+      ;debug ["ERROR unknown instruction " inst] 
+      tail ip 
+    ]
   ]
-  make object! [_ip: copy ip _output: copy output]
+  make object! [_ip: ip _output: output]
 ]
 
 run-amplifiers: func [
   data [series!] 
-  config [series!] 
-  /local signal inputs
+  config [series!]
+  /loop
+  /local signal input ip contexts
 ][
   signal: 0
-  forall config [
-    inputs: compose [(first config) (signal)]
-    out: run-code data inputs
-    signal: first out/_output
+  ; create contexts
+  contexts: copy array/initial 
+    length? config
+    (make object! [_ip: copy data _output: copy []]) 
+
+  ;debug ["loop start [" contexts "]"]
+  signal: 0
+  until [
+    repeat idx (length? contexts) [
+      ip: contexts/(idx)/_ip
+      input: compose [(signal)]
+      if not empty? config [insert input config/(idx)]
+      out: either (loop) [
+        run-code/exit-on-output ip input
+      ][
+        run-code ip input
+      ]
+      poke contexts idx out
+      ;debug ["out ip " index? ip]
+      signal: first out/_output
+    ]
+    either (loop) [
+      clear config
+      ip: contexts/(length? contexts)/_ip
+      (tail? ip) or ((first ip) = 99)
+    ][
+      true
+    ]
   ]
   signal
 ]
 
-generate-configs: does [
+generate-configs: func [min-val [number!] max-val [number!] numset [string!]] [
   string-to-list: func [s [string!]] [
     collect [foreach e s [keep to-integer to-string e]]
   ]
 
   configs: copy []
-  repeat num 44444 [
+  for num min-val max-val 1 [
     config: to-string num
     while [(length? config) < 5] [config: head insert config #"0"]
-    if (empty? difference "01234" config) [
+    if (empty? difference numset config) [
       append/only configs string-to-list config
     ]
   ]
   configs
 ]
 
-get-max-output: does [
-  first maximum-of collect [ 
-    foreach config generate-configs [
+prin "Answer 1: "
+print first maximum-of collect [ 
+    foreach config generate-configs 0 44444 "01234" [
       keep run-amplifiers data config
     ]
   ]
-]
+; "solution: "24625
+
+prin "Answer 2: "
+print first maximum-of collect [
+    foreach config generate-configs 55555 99999 "56789" [
+      keep run-amplifiers/loop data config
+    ]
+  ]
+; "solution: 36497698
 
 comment {
   --- Part Two ---
