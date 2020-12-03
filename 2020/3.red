@@ -22,7 +22,6 @@ count-trees: func [slope [pair!]] [
     width: length? data/1
     height: length? data
     while [pos/2 <= height] [
-        print pos
         if data/(pos/2)/(pos/1) [++ count]
         += pos slope
         if pos/1 > width [+= pos as-pair negate width 0]
