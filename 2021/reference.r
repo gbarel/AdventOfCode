@@ -46,3 +46,35 @@ if action [do action]
 ; switch/default [any! [block!]] [default-block!] expr!
 ; * same as select, but returns evaluated block
 
+
+; ========================
+; PARSE
+
+; parse series rules
+; * args: series [string! block!], rules [block!]
+; * /all parse all characters within a string
+; * /case treat lower case and upper case as different characters
+
+; parse splits the input argument into a block of multiple strings
+
+probe parse "here there,everywhere; ok" none
+; ["here" "there" "everywhere" "ok"]
+
+probe parse "707-467-8000" "-"
+; ["707" "467" "8000"]
+
+
+rules: [some "a" "b"] ; accepts ab aab aaab aaaab
+rules: [any "a" "b"] ; accepts b ab aab aaab aaaab
+rules: ["a" 10 skip "b"] ; accepts a0123456789b
+rules: ["a" to "b"] ; starts at `a` and ends at `b`, does not include `b`
+rules: ["a" thru "b"] ; same as `to`, but includes `b`
+
+digit: charset "0123456789" ; equivalent to charset [#"0" - #"9"]
+rules: [3 digit "-" 3 digit "-" 4 digit] ; accepts 707-467-8000
+
+alphanum: charset [#"0" - #"9" #"A" - #"Z" #"a" - #"z"]
+
+rules: [to "phone" (print "found phone") to end] ; prints "found phone" if phone is in the input series
+rules: [thru <title> copy text to </title>] ; copies title in text variable
+rules: [thru <title> begin: to </title> ending: (change/part begin "New Title" ending)]
