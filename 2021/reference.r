@@ -78,3 +78,25 @@ alphanum: charset [#"0" - #"9" #"A" - #"Z" #"a" - #"z"]
 rules: [to "phone" (print "found phone") to end] ; prints "found phone" if phone is in the input series
 rules: [thru <title> copy text to </title>] ; copies title in text variable
 rules: [thru <title> begin: to </title> ending: (change/part begin "New Title" ending)]
+
+; =======================
+; CONTEXT
+
+; `context` is the equivalent of an object
+box: context [
+  inc: func [n [number!]][n + 1]
+  str: "value"
+]
+box/inc 2 ; == 3
+box/str ; == "value"
+
+; `use` is an unnamed context to define local variables (unset outside the scope)
+box2: context [
+  speak: none
+  use [words] [
+    words: "blablabla"
+    speak: func [][words]
+  ]
+]
+box2/speak ; == "blablabla
+"
