@@ -6,3 +6,11 @@ REBOL [
 ++: func ['val [word!]] [set val 1 + get val]
 +=: func ['val [word!] inc] [set val add get val inc]
 -=: func ['val [word!] inc] [set val subtract get val inc]
+
+split: funct [
+  data [series!]
+  delimiter [block! integer! char! bitset! any-string!]
+][
+  it: find data delimiter
+  reduce [(copy/part data it) (next it)]
+]
