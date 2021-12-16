@@ -29,8 +29,8 @@ astar: context [
 
   reconstruct: funct [current][
     total-path: reduce [current]
-    while [all [backlink: state/(current)/3]][
-      current: backlink  append total-path current
+    while [all [statecurr: get-state current  statecurr/3]][
+      current: statecurr/3  append total-path current
     ]
     reverse total-path
   ]
@@ -43,14 +43,9 @@ astar: context [
     c: abs a - b  c/x + c/y
   ]
 
-  pos-to-index: funct [p [pair!]][
-    print [{pos-to-index:} p]
-    p/x + (p/y * dims/x)
-  ]
-
-  index-to-pos: funct [i [integer!]][
-    y: i / (dims/x)  x: i - (i * dims/x)
-    as-pair x y
+  get-state: funct [p [pair!]][
+    i: p/x + ((p/y - 1) * dims/x)
+    state/:i
   ]
 
   compute: func [
@@ -58,19 +53,22 @@ astar: context [
     start [pair!] 
     dest [pair!]
   ][
+    unless with [start: 1x1  dest: dims]
     ; state/openlist = list of pos to consider
     ; state = map of pos -> [gscore fscore backlink]
     openlist: reduce [start]
     state: array/initial (dims/x * dims/y) reduce [(to-integer (power 2 31) - 1) 0 none]
-    state/(pos-to-index start)/1: 0
+    statestart: get-state start  statestart/1: 0  statestart/2: manhattan-dist start dest
 
     step-cnt: 0
     while [not empty? openlist] [
       ; find node in open list with lowest fscore
-      curr: openlist/1  foreach pos openlist [
-        if (state/(pos-to-index pos)/1 < state/(pos-to-index curr)/1) [curr: pos]
+      curr: openlist/1  statecurr: get-state curr
+      foreach pos openlist [
+        statepos: get-state pos
+        if (statepos/1 < statecurr/1) [curr: pos  statecurr: statepos]
       ]
-      ; print [{pick} curr {from [} openlist {] /}]
+      ; print [{pick} curr statecurr {from [} openlist {] /}]
       take find openlist curr
       
       ; termination
@@ -80,18 +78,21 @@ astar: context [
       ]
 
       ++ step-cnt
-      statecurr: state/(pos-to-index curr)
       foreach pos get-neighbours curr [
         gscore: statecurr/1 + data/(pos/y)/(pos/x)
-        statepos: state/(pos-to-index pos)
-        ; print [curr {=>} pos {costs} gscore]
+        statepos: get-state pos
+        ; print [{ compare} curr {->} pos {costs} gscore { // current state:} statepos]
         if gscore < statepos/1 [
           ; update state (gscore fscore backlink)
           statepos/1: gscore
           statepos/2: gscore + manhattan-dist pos dest
           statepos/3: curr
+          ; print [{  update} pos statepos]
           ; add pos to openlist if it wasn't there
-          unless find openlist pos [append openlist pos]
+          unless find openlist pos [
+            append openlist pos
+            ; print [{  addlist} pos]
+          ]
         ]
       ]
     ]
