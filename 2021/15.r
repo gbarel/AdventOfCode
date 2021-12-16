@@ -9,12 +9,28 @@ do %util.r
 astar: context [
   openlist: state: data: dims: none
 
-  init: func [/test][
+  init: func [/test /large][
     lines: read/lines either test [%data/test.txt][%data/15.txt]
+    dims: as-pair length? lines/1 length? lines
     data: collect [foreach l lines [
       keep/only collect [foreach c l [keep c - #"0"]]
     ]]
-    dims: as-pair length? data/1 length? data
+
+    if large [
+      ; duplicate data 5 times along the x axis (adding num each time)
+      repeat y dims/y [
+        row: copy data/:y
+        loop 4 [
+          append data/:y row: map-each i row [either i = 9 [1][i + 1]]
+        ]
+      ]
+      ; duplicate new data 5 times along the y axis (adding num each time)
+      repeat y (4 * dims/y) [
+        append/only data map-each i data/:y [either i = 9 [1][i + 1]]
+      ]
+      ; update dims
+      dims: dims * 5
+    ]
     return
   ]
 
@@ -99,76 +115,14 @@ astar: context [
   ]
 ]
 
-
-
-;     reconstruct: funct [backlinks current][
-;       total-path: reduce [current]
-;       while [all [
-;         idx: 1 + index? find extract backlinks 2 current
-;         backlinks/:idx
-;       ]][
-;         current: backlinks/:idx
-;         insert head total-path current
-;       ]
-;       total-path
-;     ]
-
-
-;     evaluate: funct [path [block!]][
-;       r: 0 foreach p next path [+= r map/(p/y)/(p/x)] r
-;     ]
-
-;     manhattan-dist: funct [a [pair!] b [pair!]][
-;       c: abs a - b  c/x + c/y
-;     ]
-
-;     compute: func [start [pair!] dest [pair!]][
-;       ; gscore = cost of cheapest path known from start to pos
-;       ; fscore = best guess at shortest path from start to finish
-;       ; backlinks = list of dest-node from-node
-;       openlist: reduce [start]
-;       tmp: copy [] repeat x dims/x [repeat y dims/y[append tmp reduce[as-pair x y none]]]
-;       infinity: to-integer (power 2 31) - 1
-;       gscores: copy tmp  forskip gscores 2 [gscores/2: infinity]  gscores/:start: 0
-;       fscores: copy tmp  fscores/:start: manhattan-dist start dest
-;       backlinks: copy tmp
-
-;       while [not empty? openlist] [
-;         ; find node in open list with lowest fscore
-;         curr: openlist/1 foreach node openlist [
-;           if gscores/:node < gscores/:curr [curr: node]
-;         ]
-;         take find openlist curr
-;         ; print [{pick} curr {from [} openlist {] /} fscores]
-        
-;         ; termination
-;         if curr = dest [
-;           return reconstruct-path backlinks curr
-;         ]
-
-;         foreach node get-neighbours curr [
-;           gscore: gscores/:curr + map/(node/y)/(node/x)
-;           idx: 1 + index? find gscores node
-;           print [curr {=>} node {costs} gscore]
-;           if gscore < gscores/:idx [
-;             ; update scores
-;             gscores/:idx: gscore
-;             fscores/:idx: gscore + manhattan-dist node dest
-;             ; update backlinks
-;             backlinks/:idx: curr
-;             ; add node to openlist if it wasn't there
-;             unless find openlist node [append openlist node]
-;           ]
-;         ]
-;       ]
-;     ]
-; ;   ]
-; ]
-
 ; --- Part 1 ---
-r1: 0
+astar/init
+path1: astar/compute
+r1: path1/1
 print [{Part 1:} r1]
 
 ; --- Part 2 ---
-r2: 0
+astar/init/large
+path2: astar/compute
+r2: path2/1
 print [{Part 2:} r2]
